@@ -1,7 +1,9 @@
 import json
 import os
+from collections import Counter
 
 from tba.teams import getTeamKeys, readTeamGithubURL
+from github.account import getLangs
 
 # Check for a save file
 if not os.path.exists("./data.json"):
@@ -10,10 +12,14 @@ if not os.path.exists("./data.json"):
         data = {
             "config": {
                 "latest_page": 0,
-                "latest_github":0
+                "latest_github": 0,
+                "latest_github_parse": 0,
+                "langs_sorted": [],
+                "langs_grouped": []
             },
             "keys": [],
-            "githubs":[]
+            "githubs": [],
+            "langs":[]
         }
         fp.write(json.dumps(data))
         fp.close()
@@ -64,6 +70,28 @@ try:
         if github != None:
             save_file["githubs"].append({"team": team, "account": github})
             print(f"Found github account for team {team}         ", end="\r")
+    print()
+
+    # Get Languages
+    print(f"Last session parsed {save_file['config']['latest_github_parse']} valid github accounts")
+    githubs_to_parse = save_file["githubs"][save_file['config']['latest_github_parse'] :]
+    for account in githubs_to_parse:
+        team_langs = getLangs(account["account"])
+
+        save_file["langs"] += team_langs
+        save_file['config']['latest_github_parse'] += 1
+        print(f"Loaded languages for github account: {account['account']} ({save_file['config']['latest_github_parse']})                                        ", end="\r")
+    print()
+
+    # Sort
+    print("Sorting Languages by usage")
+    save_file["langs_sorted"] = [item for items, c in Counter(save_file["langs"]).most_common() for item in [items] * c]
+    langs = list(dict.fromkeys(save_file["langs_sorted"]))
+
+    # print number of occurenced
+    for lang in langs:
+        print(f"{save_file['langs_sorted'].count(lang)} occurrences of {lang}")
+    
         
 except KeyboardInterrupt as e:
     print("CTRL+C detected")
